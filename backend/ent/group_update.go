@@ -20,6 +20,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/usagelog"
 	"github.com/Wei-Shaw/sub2api/ent/user"
 	"github.com/Wei-Shaw/sub2api/ent/usersubscription"
+	"github.com/Wei-Shaw/sub2api/internal/domain"
 )
 
 // GroupUpdate is the builder for updating Group entities.
@@ -496,6 +497,76 @@ func (_u *GroupUpdate) AddSortOrder(v int) *GroupUpdate {
 	return _u
 }
 
+// SetAllowMessagesDispatch sets the "allow_messages_dispatch" field.
+func (_u *GroupUpdate) SetAllowMessagesDispatch(v bool) *GroupUpdate {
+	_u.mutation.SetAllowMessagesDispatch(v)
+	return _u
+}
+
+// SetNillableAllowMessagesDispatch sets the "allow_messages_dispatch" field if the given value is not nil.
+func (_u *GroupUpdate) SetNillableAllowMessagesDispatch(v *bool) *GroupUpdate {
+	if v != nil {
+		_u.SetAllowMessagesDispatch(*v)
+	}
+	return _u
+}
+
+// SetRequireOauthOnly sets the "require_oauth_only" field.
+func (_u *GroupUpdate) SetRequireOauthOnly(v bool) *GroupUpdate {
+	_u.mutation.SetRequireOauthOnly(v)
+	return _u
+}
+
+// SetNillableRequireOauthOnly sets the "require_oauth_only" field if the given value is not nil.
+func (_u *GroupUpdate) SetNillableRequireOauthOnly(v *bool) *GroupUpdate {
+	if v != nil {
+		_u.SetRequireOauthOnly(*v)
+	}
+	return _u
+}
+
+// SetRequirePrivacySet sets the "require_privacy_set" field.
+func (_u *GroupUpdate) SetRequirePrivacySet(v bool) *GroupUpdate {
+	_u.mutation.SetRequirePrivacySet(v)
+	return _u
+}
+
+// SetNillableRequirePrivacySet sets the "require_privacy_set" field if the given value is not nil.
+func (_u *GroupUpdate) SetNillableRequirePrivacySet(v *bool) *GroupUpdate {
+	if v != nil {
+		_u.SetRequirePrivacySet(*v)
+	}
+	return _u
+}
+
+// SetDefaultMappedModel sets the "default_mapped_model" field.
+func (_u *GroupUpdate) SetDefaultMappedModel(v string) *GroupUpdate {
+	_u.mutation.SetDefaultMappedModel(v)
+	return _u
+}
+
+// SetNillableDefaultMappedModel sets the "default_mapped_model" field if the given value is not nil.
+func (_u *GroupUpdate) SetNillableDefaultMappedModel(v *string) *GroupUpdate {
+	if v != nil {
+		_u.SetDefaultMappedModel(*v)
+	}
+	return _u
+}
+
+// SetMessagesDispatchModelConfig sets the "messages_dispatch_model_config" field.
+func (_u *GroupUpdate) SetMessagesDispatchModelConfig(v domain.OpenAIMessagesDispatchModelConfig) *GroupUpdate {
+	_u.mutation.SetMessagesDispatchModelConfig(v)
+	return _u
+}
+
+// SetNillableMessagesDispatchModelConfig sets the "messages_dispatch_model_config" field if the given value is not nil.
+func (_u *GroupUpdate) SetNillableMessagesDispatchModelConfig(v *domain.OpenAIMessagesDispatchModelConfig) *GroupUpdate {
+	if v != nil {
+		_u.SetMessagesDispatchModelConfig(*v)
+	}
+	return _u
+}
+
 // AddAPIKeyIDs adds the "api_keys" edge to the APIKey entity by IDs.
 func (_u *GroupUpdate) AddAPIKeyIDs(ids ...int64) *GroupUpdate {
 	_u.mutation.AddAPIKeyIDs(ids...)
@@ -781,6 +852,11 @@ func (_u *GroupUpdate) check() error {
 			return &ValidationError{Name: "subscription_type", err: fmt.Errorf(`ent: validator failed for field "Group.subscription_type": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.DefaultMappedModel(); ok {
+		if err := group.DefaultMappedModelValidator(v); err != nil {
+			return &ValidationError{Name: "default_mapped_model", err: fmt.Errorf(`ent: validator failed for field "Group.default_mapped_model": %w`, err)}
+		}
+	}
 	return nil
 }
 
@@ -938,6 +1014,21 @@ func (_u *GroupUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.AddedSortOrder(); ok {
 		_spec.AddField(group.FieldSortOrder, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AllowMessagesDispatch(); ok {
+		_spec.SetField(group.FieldAllowMessagesDispatch, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.RequireOauthOnly(); ok {
+		_spec.SetField(group.FieldRequireOauthOnly, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.RequirePrivacySet(); ok {
+		_spec.SetField(group.FieldRequirePrivacySet, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.DefaultMappedModel(); ok {
+		_spec.SetField(group.FieldDefaultMappedModel, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.MessagesDispatchModelConfig(); ok {
+		_spec.SetField(group.FieldMessagesDispatchModelConfig, field.TypeJSON, value)
 	}
 	if _u.mutation.APIKeysCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -1714,6 +1805,76 @@ func (_u *GroupUpdateOne) AddSortOrder(v int) *GroupUpdateOne {
 	return _u
 }
 
+// SetAllowMessagesDispatch sets the "allow_messages_dispatch" field.
+func (_u *GroupUpdateOne) SetAllowMessagesDispatch(v bool) *GroupUpdateOne {
+	_u.mutation.SetAllowMessagesDispatch(v)
+	return _u
+}
+
+// SetNillableAllowMessagesDispatch sets the "allow_messages_dispatch" field if the given value is not nil.
+func (_u *GroupUpdateOne) SetNillableAllowMessagesDispatch(v *bool) *GroupUpdateOne {
+	if v != nil {
+		_u.SetAllowMessagesDispatch(*v)
+	}
+	return _u
+}
+
+// SetRequireOauthOnly sets the "require_oauth_only" field.
+func (_u *GroupUpdateOne) SetRequireOauthOnly(v bool) *GroupUpdateOne {
+	_u.mutation.SetRequireOauthOnly(v)
+	return _u
+}
+
+// SetNillableRequireOauthOnly sets the "require_oauth_only" field if the given value is not nil.
+func (_u *GroupUpdateOne) SetNillableRequireOauthOnly(v *bool) *GroupUpdateOne {
+	if v != nil {
+		_u.SetRequireOauthOnly(*v)
+	}
+	return _u
+}
+
+// SetRequirePrivacySet sets the "require_privacy_set" field.
+func (_u *GroupUpdateOne) SetRequirePrivacySet(v bool) *GroupUpdateOne {
+	_u.mutation.SetRequirePrivacySet(v)
+	return _u
+}
+
+// SetNillableRequirePrivacySet sets the "require_privacy_set" field if the given value is not nil.
+func (_u *GroupUpdateOne) SetNillableRequirePrivacySet(v *bool) *GroupUpdateOne {
+	if v != nil {
+		_u.SetRequirePrivacySet(*v)
+	}
+	return _u
+}
+
+// SetDefaultMappedModel sets the "default_mapped_model" field.
+func (_u *GroupUpdateOne) SetDefaultMappedModel(v string) *GroupUpdateOne {
+	_u.mutation.SetDefaultMappedModel(v)
+	return _u
+}
+
+// SetNillableDefaultMappedModel sets the "default_mapped_model" field if the given value is not nil.
+func (_u *GroupUpdateOne) SetNillableDefaultMappedModel(v *string) *GroupUpdateOne {
+	if v != nil {
+		_u.SetDefaultMappedModel(*v)
+	}
+	return _u
+}
+
+// SetMessagesDispatchModelConfig sets the "messages_dispatch_model_config" field.
+func (_u *GroupUpdateOne) SetMessagesDispatchModelConfig(v domain.OpenAIMessagesDispatchModelConfig) *GroupUpdateOne {
+	_u.mutation.SetMessagesDispatchModelConfig(v)
+	return _u
+}
+
+// SetNillableMessagesDispatchModelConfig sets the "messages_dispatch_model_config" field if the given value is not nil.
+func (_u *GroupUpdateOne) SetNillableMessagesDispatchModelConfig(v *domain.OpenAIMessagesDispatchModelConfig) *GroupUpdateOne {
+	if v != nil {
+		_u.SetMessagesDispatchModelConfig(*v)
+	}
+	return _u
+}
+
 // AddAPIKeyIDs adds the "api_keys" edge to the APIKey entity by IDs.
 func (_u *GroupUpdateOne) AddAPIKeyIDs(ids ...int64) *GroupUpdateOne {
 	_u.mutation.AddAPIKeyIDs(ids...)
@@ -2012,6 +2173,11 @@ func (_u *GroupUpdateOne) check() error {
 			return &ValidationError{Name: "subscription_type", err: fmt.Errorf(`ent: validator failed for field "Group.subscription_type": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.DefaultMappedModel(); ok {
+		if err := group.DefaultMappedModelValidator(v); err != nil {
+			return &ValidationError{Name: "default_mapped_model", err: fmt.Errorf(`ent: validator failed for field "Group.default_mapped_model": %w`, err)}
+		}
+	}
 	return nil
 }
 
@@ -2186,6 +2352,21 @@ func (_u *GroupUpdateOne) sqlSave(ctx context.Context) (_node *Group, err error)
 	}
 	if value, ok := _u.mutation.AddedSortOrder(); ok {
 		_spec.AddField(group.FieldSortOrder, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AllowMessagesDispatch(); ok {
+		_spec.SetField(group.FieldAllowMessagesDispatch, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.RequireOauthOnly(); ok {
+		_spec.SetField(group.FieldRequireOauthOnly, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.RequirePrivacySet(); ok {
+		_spec.SetField(group.FieldRequirePrivacySet, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.DefaultMappedModel(); ok {
+		_spec.SetField(group.FieldDefaultMappedModel, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.MessagesDispatchModelConfig(); ok {
+		_spec.SetField(group.FieldMessagesDispatchModelConfig, field.TypeJSON, value)
 	}
 	if _u.mutation.APIKeysCleared() {
 		edge := &sqlgraph.EdgeSpec{

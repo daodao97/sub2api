@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"context"
 	"strconv"
 	"strings"
 
@@ -72,24 +73,32 @@ type UpdateBalanceRequest struct {
 //   - role: filter by user role
 //   - search: search in email, username
 //   - attr[{id}]: filter by custom attribute value, e.g. attr[1]=company
+//   - group_name: fuzzy filter by allowed group name
 func (h *UserHandler) List(c *gin.Context) {
 	page, pageSize := response.ParsePagination(c)
 
 	search := c.Query("search")
 	// 标准化和验证 search 参数
 	search = strings.TrimSpace(search)
-	if len(search) > 100 {
-		search = search[:100]
+	if runes := []rune(search); len(runes) > 100 {
+		search = string(runes[:100])
 	}
 
 	filters := service.UserListFilters{
 		Status:     c.Query("status"),
 		Role:       c.Query("role"),
 		Search:     search,
+		GroupName:  strings.TrimSpace(c.Query("group_name")),
 		Attributes: parseAttributeFilters(c),
 	}
+	sortBy := c.DefaultQuery("sort_by", "created_at")
+	sortOrder := c.DefaultQuery("sort_order", "desc")
+	if raw, ok := c.GetQuery("include_subscriptions"); ok {
+		includeSubscriptions := parseBoolQueryWithDefault(raw, true)
+		filters.IncludeSubscriptions = &includeSubscriptions
+	}
 
-	users, total, err := h.adminService.ListUsers(c.Request.Context(), page, pageSize, filters)
+	users, total, err := h.adminService.ListUsers(c.Request.Context(), page, pageSize, filters, sortBy, sortOrder)
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return
@@ -257,13 +266,20 @@ func (h *UserHandler) UpdateBalance(c *gin.Context) {
 		return
 	}
 
-	user, err := h.adminService.UpdateUserBalance(c.Request.Context(), userID, req.Balance, req.Operation, req.Notes)
-	if err != nil {
-		response.ErrorFrom(c, err)
-		return
+	idempotencyPayload := struct {
+		UserID int64                `json:"user_id"`
+		Body   UpdateBalanceRequest `json:"body"`
+	}{
+		UserID: userID,
+		Body:   req,
 	}
-
-	response.Success(c, dto.UserFromServiceAdmin(user))
+	executeAdminIdempotentJSON(c, "admin.users.balance.update", idempotencyPayload, service.DefaultWriteIdempotencyTTL(), func(ctx context.Context) (any, error) {
+		user, execErr := h.adminService.UpdateUserBalance(ctx, userID, req.Balance, req.Operation, req.Notes)
+		if execErr != nil {
+			return nil, execErr
+		}
+		return dto.UserFromServiceAdmin(user), nil
+	})
 }
 
 // GetUserAPIKeys handles getting user's API keys
@@ -276,8 +292,10 @@ func (h *UserHandler) GetUserAPIKeys(c *gin.Context) {
 	}
 
 	page, pageSize := response.ParsePagination(c)
+	sortBy := c.DefaultQuery("sort_by", "created_at")
+	sortOrder := c.DefaultQuery("sort_order", "desc")
 
-	keys, total, err := h.adminService.GetUserAPIKeys(c.Request.Context(), userID, page, pageSize)
+	keys, total, err := h.adminService.GetUserAPIKeys(c.Request.Context(), userID, page, pageSize, sortBy, sortOrder)
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return
@@ -348,5 +366,37 @@ func (h *UserHandler) GetBalanceHistory(c *gin.Context) {
 		"page_size":       pageSize,
 		"pages":           pages,
 		"total_recharged": totalRecharged,
+	})
+}
+
+// ReplaceGroupRequest represents the request to replace a user's exclusive group
+type ReplaceGroupRequest struct {
+	OldGroupID int64 `json:"old_group_id" binding:"required,gt=0"`
+	NewGroupID int64 `json:"new_group_id" binding:"required,gt=0"`
+}
+
+// ReplaceGroup handles replacing a user's exclusive group
+// POST /api/v1/admin/users/:id/replace-group
+func (h *UserHandler) ReplaceGroup(c *gin.Context) {
+	userID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.BadRequest(c, "Invalid user ID")
+		return
+	}
+
+	var req ReplaceGroupRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+
+	result, err := h.adminService.ReplaceUserGroup(c.Request.Context(), userID, req.OldGroupID, req.NewGroupID)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+
+	response.Success(c, gin.H{
+		"migrated_keys": result.MigratedKeys,
 	})
 }

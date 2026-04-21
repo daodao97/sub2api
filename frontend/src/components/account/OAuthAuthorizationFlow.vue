@@ -48,11 +48,44 @@
                 t(getOAuthKey('refreshTokenAuth'))
               }}</span>
             </label>
+            <label v-if="showMobileRefreshTokenOption" class="flex cursor-pointer items-center gap-2">
+              <input
+                v-model="inputMethod"
+                type="radio"
+                value="mobile_refresh_token"
+                class="text-blue-600 focus:ring-blue-500"
+              />
+              <span class="text-sm text-blue-900 dark:text-blue-200">{{
+                t('admin.accounts.oauth.openai.mobileRefreshTokenAuth', '手动输入 Mobile RT')
+              }}</span>
+            </label>
+            <label v-if="showSessionTokenOption" class="flex cursor-pointer items-center gap-2">
+              <input
+                v-model="inputMethod"
+                type="radio"
+                value="session_token"
+                class="text-blue-600 focus:ring-blue-500"
+              />
+              <span class="text-sm text-blue-900 dark:text-blue-200">{{
+                t(getOAuthKey('sessionTokenAuth'))
+              }}</span>
+            </label>
+            <label v-if="showAccessTokenOption" class="flex cursor-pointer items-center gap-2">
+              <input
+                v-model="inputMethod"
+                type="radio"
+                value="access_token"
+                class="text-blue-600 focus:ring-blue-500"
+              />
+              <span class="text-sm text-blue-900 dark:text-blue-200">{{
+                t('admin.accounts.oauth.openai.accessTokenAuth', '手动输入 AT')
+              }}</span>
+            </label>
           </div>
         </div>
 
-        <!-- Refresh Token Input (OpenAI / Antigravity) -->
-        <div v-if="inputMethod === 'refresh_token'" class="space-y-4">
+        <!-- Refresh Token Input (OpenAI / Antigravity / Mobile RT) -->
+        <div v-if="inputMethod === 'refresh_token' || inputMethod === 'mobile_refresh_token'" class="space-y-4">
           <div
             class="rounded-lg border border-blue-300 bg-white/80 p-4 dark:border-blue-600 dark:bg-gray-800/80"
           >
@@ -511,6 +544,7 @@ import { useI18n } from 'vue-i18n'
 import { useClipboard } from '@/composables/useClipboard'
 import Icon from '@/components/icons/Icon.vue'
 import type { AddMethod, AuthInputMethod } from '@/composables/useAccountOAuth'
+import type { AccountPlatform } from '@/types'
 
 interface Props {
   addMethod: AddMethod
@@ -524,7 +558,10 @@ interface Props {
   methodLabel?: string
   showCookieOption?: boolean // Whether to show cookie auto-auth option
   showRefreshTokenOption?: boolean // Whether to show refresh token input option (OpenAI only)
-  platform?: 'anthropic' | 'openai' | 'gemini' | 'antigravity' // Platform type for different UI/text
+  showMobileRefreshTokenOption?: boolean // Whether to show mobile refresh token option (OpenAI only)
+  showSessionTokenOption?: boolean
+  showAccessTokenOption?: boolean
+  platform?: AccountPlatform // Platform type for different UI/text
   showProjectId?: boolean // New prop to control project ID visibility
 }
 
@@ -539,6 +576,9 @@ const props = withDefaults(defineProps<Props>(), {
   methodLabel: 'Authorization Method',
   showCookieOption: true,
   showRefreshTokenOption: false,
+  showMobileRefreshTokenOption: false,
+  showSessionTokenOption: false,
+  showAccessTokenOption: false,
   platform: 'anthropic',
   showProjectId: true
 })
@@ -548,6 +588,9 @@ const emit = defineEmits<{
   'exchange-code': [code: string]
   'cookie-auth': [sessionKey: string]
   'validate-refresh-token': [refreshToken: string]
+  'validate-mobile-refresh-token': [refreshToken: string]
+  'validate-session-token': [sessionToken: string]
+  'import-access-token': [accessToken: string]
   'update:inputMethod': [method: AuthInputMethod]
 }>()
 
@@ -586,12 +629,13 @@ const inputMethod = ref<AuthInputMethod>(props.showCookieOption ? 'manual' : 'ma
 const authCodeInput = ref('')
 const sessionKeyInput = ref('')
 const refreshTokenInput = ref('')
+const sessionTokenInput = ref('')
 const showHelpDialog = ref(false)
 const oauthState = ref('')
 const projectId = ref('')
 
 // Computed: show method selection when either cookie or refresh token option is enabled
-const showMethodSelection = computed(() => props.showCookieOption || props.showRefreshTokenOption)
+const showMethodSelection = computed(() => props.showCookieOption || props.showRefreshTokenOption || props.showMobileRefreshTokenOption || props.showSessionTokenOption || props.showAccessTokenOption)
 
 // Clipboard
 const { copied, copyToClipboard } = useClipboard()
@@ -630,7 +674,7 @@ watch(authCodeInput, (newVal) => {
       const url = new URL(trimmed)
       const code = url.searchParams.get('code')
       const stateParam = url.searchParams.get('state')
-      if ((props.platform === 'gemini' || props.platform === 'antigravity') && stateParam) {
+      if ((props.platform === 'openai' || props.platform === 'gemini' || props.platform === 'antigravity') && stateParam) {
         oauthState.value = stateParam
       }
       if (code && code !== trimmed) {
@@ -641,7 +685,7 @@ watch(authCodeInput, (newVal) => {
       // If URL parsing fails, try regex extraction
       const match = trimmed.match(/[?&]code=([^&]+)/)
       const stateMatch = trimmed.match(/[?&]state=([^&]+)/)
-      if ((props.platform === 'gemini' || props.platform === 'antigravity') && stateMatch && stateMatch[1]) {
+      if ((props.platform === 'openai' || props.platform === 'gemini' || props.platform === 'antigravity') && stateMatch && stateMatch[1]) {
         oauthState.value = stateMatch[1]
       }
       if (match && match[1] && match[1] !== trimmed) {
@@ -675,7 +719,11 @@ const handleCookieAuth = () => {
 
 const handleValidateRefreshToken = () => {
   if (refreshTokenInput.value.trim()) {
-    emit('validate-refresh-token', refreshTokenInput.value.trim())
+    if (inputMethod.value === 'mobile_refresh_token') {
+      emit('validate-mobile-refresh-token', refreshTokenInput.value.trim())
+    } else {
+      emit('validate-refresh-token', refreshTokenInput.value.trim())
+    }
   }
 }
 
@@ -686,6 +734,7 @@ defineExpose({
   projectId,
   sessionKey: sessionKeyInput,
   refreshToken: refreshTokenInput,
+  sessionToken: sessionTokenInput,
   inputMethod,
   reset: () => {
     authCodeInput.value = ''
@@ -693,6 +742,7 @@ defineExpose({
     projectId.value = ''
     sessionKeyInput.value = ''
     refreshTokenInput.value = ''
+    sessionTokenInput.value = ''
     inputMethod.value = 'manual'
     showHelpDialog.value = false
   }

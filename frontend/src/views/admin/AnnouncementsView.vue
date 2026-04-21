@@ -39,7 +39,15 @@
       </template>
 
       <template #table>
-        <DataTable :columns="columns" :data="announcements" :loading="loading">
+        <DataTable
+          :columns="columns"
+          :data="announcements"
+          :loading="loading"
+          :server-side-sort="true"
+          default-sort-key="created_at"
+          default-sort-order="desc"
+          @sort="handleSort"
+        >
           <template #cell-title="{ value, row }">
             <div class="min-w-0">
               <div class="flex items-center gap-2">
@@ -68,6 +76,19 @@
             </span>
           </template>
 
+          <template #cell-notify_mode="{ row }">
+            <span
+              :class="[
+                'badge',
+                row.notify_mode === 'popup'
+                  ? 'badge-warning'
+                  : 'badge-gray'
+              ]"
+            >
+              {{ row.notify_mode === 'popup' ? t('admin.announcements.notifyModeLabels.popup') : t('admin.announcements.notifyModeLabels.silent') }}
+            </span>
+          </template>
+
           <template #cell-targeting="{ row }">
             <span class="text-sm text-gray-600 dark:text-gray-300">
               {{ targetingSummary(row.targeting) }}
@@ -87,7 +108,7 @@
             </div>
           </template>
 
-          <template #cell-createdAt="{ value }">
+          <template #cell-created_at="{ value }">
             <span class="text-sm text-gray-500 dark:text-dark-400">{{ formatDateTime(value) }}</span>
           </template>
 
@@ -163,7 +184,11 @@
             <label class="input-label">{{ t('admin.announcements.form.status') }}</label>
             <Select v-model="form.status" :options="statusOptions" />
           </div>
-          <div></div>
+          <div>
+            <label class="input-label">{{ t('admin.announcements.form.notifyMode') }}</label>
+            <Select v-model="form.notify_mode" :options="notifyModeOptions" />
+            <p class="input-hint">{{ t('admin.announcements.form.notifyModeHint') }}</p>
+          </div>
         </div>
 
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -219,9 +244,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
+import { getPersistedPageSize } from '@/composables/usePersistedPageSize'
 import { adminAPI } from '@/api/admin'
 import { formatDateTime, formatDateTimeLocalInput, parseDateTimeLocalInput } from '@/utils/format'
 import type { AdminGroup, Announcement, AnnouncementTargeting } from '@/types'
@@ -253,9 +279,14 @@ const searchQuery = ref('')
 
 const pagination = reactive({
   page: 1,
-  page_size: 20,
+  page_size: getPersistedPageSize(),
   total: 0,
   pages: 0
+})
+
+const sortState = reactive({
+  sort_by: 'created_at',
+  sort_order: 'desc' as 'asc' | 'desc'
 })
 
 const statusFilterOptions = computed(() => [
@@ -271,12 +302,18 @@ const statusOptions = computed(() => [
   { value: 'archived', label: t('admin.announcements.statusLabels.archived') }
 ])
 
+const notifyModeOptions = computed(() => [
+  { value: 'silent', label: t('admin.announcements.notifyModeLabels.silent') },
+  { value: 'popup', label: t('admin.announcements.notifyModeLabels.popup') }
+])
+
 const columns = computed<Column[]>(() => [
-  { key: 'title', label: t('admin.announcements.columns.title') },
-  { key: 'status', label: t('admin.announcements.columns.status') },
+  { key: 'title', label: t('admin.announcements.columns.title'), sortable: true },
+  { key: 'status', label: t('admin.announcements.columns.status'), sortable: true },
+  { key: 'notify_mode', label: t('admin.announcements.columns.notifyMode'), sortable: true },
   { key: 'targeting', label: t('admin.announcements.columns.targeting') },
   { key: 'timeRange', label: t('admin.announcements.columns.timeRange') },
-  { key: 'createdAt', label: t('admin.announcements.columns.createdAt') },
+  { key: 'created_at', label: t('admin.announcements.columns.createdAt'), sortable: true },
   { key: 'actions', label: t('admin.announcements.columns.actions') }
 ])
 
@@ -297,15 +334,21 @@ const targetingSummary = (targeting: AnnouncementTargeting) => {
 let currentController: AbortController | null = null
 
 async function loadAnnouncements() {
-  if (currentController) currentController.abort()
-  currentController = new AbortController()
+  currentController?.abort()
+  const requestController = new AbortController()
+  currentController = requestController
+  const { signal } = requestController
 
   try {
     loading.value = true
     const res = await adminAPI.announcements.list(pagination.page, pagination.page_size, {
       status: filters.status || undefined,
-      search: searchQuery.value || undefined
-    })
+      search: searchQuery.value || undefined,
+      sort_by: sortState.sort_by,
+      sort_order: sortState.sort_order
+    }, { signal })
+
+    if (signal.aborted || currentController !== requestController) return
 
     announcements.value = res.items
     pagination.total = res.total
@@ -313,11 +356,21 @@ async function loadAnnouncements() {
     pagination.page = res.page
     pagination.page_size = res.page_size
   } catch (error: any) {
-    if (currentController.signal.aborted || error?.name === 'AbortError') return
+    if (
+      signal.aborted ||
+      currentController !== requestController ||
+      error?.name === 'AbortError' ||
+      error?.code === 'ERR_CANCELED'
+    ) {
+      return
+    }
     console.error('Error loading announcements:', error)
     appStore.showError(error.response?.data?.detail || t('admin.announcements.failedToLoad'))
   } finally {
-    loading.value = false
+    if (currentController === requestController) {
+      loading.value = false
+      currentController = null
+    }
   }
 }
 
@@ -333,6 +386,13 @@ function handlePageSizeChange(pageSize: number) {
 }
 
 function handleStatusChange() {
+  pagination.page = 1
+  loadAnnouncements()
+}
+
+function handleSort(key: string, order: 'asc' | 'desc') {
+  sortState.sort_by = key
+  sortState.sort_order = order
   pagination.page = 1
   loadAnnouncements()
 }
@@ -357,6 +417,7 @@ const form = reactive({
   title: '',
   content: '',
   status: 'draft',
+  notify_mode: 'silent',
   starts_at_str: '',
   ends_at_str: '',
   targeting: { any_of: [] } as AnnouncementTargeting
@@ -378,6 +439,7 @@ function resetForm() {
   form.title = ''
   form.content = ''
   form.status = 'draft'
+  form.notify_mode = 'silent'
   form.starts_at_str = ''
   form.ends_at_str = ''
   form.targeting = { any_of: [] }
@@ -387,6 +449,7 @@ function fillFormFromAnnouncement(a: Announcement) {
   form.title = a.title
   form.content = a.content
   form.status = a.status
+  form.notify_mode = a.notify_mode || 'silent'
 
   // Backend returns RFC3339 strings
   form.starts_at_str = a.starts_at ? formatDateTimeLocalInput(Math.floor(new Date(a.starts_at).getTime() / 1000)) : ''
@@ -420,6 +483,7 @@ function buildCreatePayload() {
     title: form.title,
     content: form.content,
     status: form.status as any,
+    notify_mode: form.notify_mode as any,
     targeting: form.targeting,
     starts_at: startsAt ?? undefined,
     ends_at: endsAt ?? undefined
@@ -432,6 +496,7 @@ function buildUpdatePayload(original: Announcement) {
   if (form.title !== original.title) payload.title = form.title
   if (form.content !== original.content) payload.content = form.content
   if (form.status !== original.status) payload.status = form.status
+  if (form.notify_mode !== (original.notify_mode || 'silent')) payload.notify_mode = form.notify_mode
 
   // starts_at / ends_at: distinguish unchanged vs clear(0) vs set
   const originalStarts = original.starts_at ? Math.floor(new Date(original.starts_at).getTime() / 1000) : null
@@ -532,5 +597,10 @@ function openReadStatus(row: Announcement) {
 onMounted(async () => {
   await loadSubscriptionGroups()
   await loadAnnouncements()
+})
+
+onUnmounted(() => {
+  if (searchDebounceTimer) window.clearTimeout(searchDebounceTimer)
+  currentController?.abort()
 })
 </script>

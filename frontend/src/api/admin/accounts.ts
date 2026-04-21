@@ -15,7 +15,9 @@ import type {
   AccountUsageStatsResponse,
   TempUnschedulableStatus,
   AdminDataPayload,
-  AdminDataImportResult
+  AdminDataImportResult,
+  CheckMixedChannelRequest,
+  CheckMixedChannelResponse
 } from '@/types'
 
 /**
@@ -34,6 +36,10 @@ export async function list(
     status?: string
     group?: string
     search?: string
+    privacy_mode?: string
+    lite?: string
+    sort_by?: string
+    sort_order?: 'asc' | 'desc'
   },
   options?: {
     signal?: AbortSignal
@@ -48,6 +54,63 @@ export async function list(
     signal: options?.signal
   })
   return data
+}
+
+export interface AccountListWithEtagResult {
+  notModified: boolean
+  etag: string | null
+  data: PaginatedResponse<Account> | null
+}
+
+export async function listWithEtag(
+  page: number = 1,
+  pageSize: number = 20,
+  filters?: {
+    platform?: string
+    type?: string
+    status?: string
+    group?: string
+    search?: string
+    privacy_mode?: string
+    lite?: string
+    sort_by?: string
+    sort_order?: 'asc' | 'desc'
+  },
+  options?: {
+    signal?: AbortSignal
+    etag?: string | null
+  }
+): Promise<AccountListWithEtagResult> {
+  const headers: Record<string, string> = {}
+  if (options?.etag) {
+    headers['If-None-Match'] = options.etag
+  }
+
+  const response = await apiClient.get<PaginatedResponse<Account>>('/admin/accounts', {
+    params: {
+      page,
+      page_size: pageSize,
+      ...filters
+    },
+    headers,
+    signal: options?.signal,
+    validateStatus: (status) => (status >= 200 && status < 300) || status === 304
+  })
+
+  const etagHeader = typeof response.headers?.etag === 'string' ? response.headers.etag : null
+  if (response.status === 304) {
+    return {
+      notModified: true,
+      etag: etagHeader,
+      data: null
+    }
+  }
+
+  return {
+    notModified: false,
+    etag: etagHeader,
+    data: response.data
+  }
 }
 
 /**
@@ -78,6 +141,16 @@ export async function create(accountData: CreateAccountRequest): Promise<Account
  */
 export async function update(id: number, updates: UpdateAccountRequest): Promise<Account> {
   const { data } = await apiClient.put<Account>(`/admin/accounts/${id}`, updates)
+  return data
+}
+
+/**
+ * Check mixed-channel risk for account-group binding.
+ */
+export async function checkMixedChannelRisk(
+  payload: CheckMixedChannelRequest
+): Promise<CheckMixedChannelResponse> {
+  const { data } = await apiClient.post<CheckMixedChannelResponse>('/admin/accounts/check-mixed-channel', payload)
   return data
 }
 
@@ -157,19 +230,43 @@ export async function clearError(id: number): Promise<Account> {
  * @param id - Account ID
  * @returns Account usage info
  */
-export async function getUsage(id: number): Promise<AccountUsageInfo> {
-  const { data } = await apiClient.get<AccountUsageInfo>(`/admin/accounts/${id}/usage`)
+export async function getUsage(id: number, source?: 'passive' | 'active'): Promise<AccountUsageInfo> {
+  const { data } = await apiClient.get<AccountUsageInfo>(`/admin/accounts/${id}/usage`, {
+    params: source ? { source } : undefined
+  })
   return data
 }
 
 /**
  * Clear account rate limit status
  * @param id - Account ID
- * @returns Success confirmation
+ * @returns Updated account
  */
-export async function clearRateLimit(id: number): Promise<{ message: string }> {
-  const { data } = await apiClient.post<{ message: string }>(
+export async function clearRateLimit(id: number): Promise<Account> {
+  const { data } = await apiClient.post<Account>(
     `/admin/accounts/${id}/clear-rate-limit`
+  )
+  return data
+}
+
+/**
+ * Recover account runtime state in one call
+ * @param id - Account ID
+ * @returns Updated account
+ */
+export async function recoverState(id: number): Promise<Account> {
+  const { data } = await apiClient.post<Account>(`/admin/accounts/${id}/recover-state`)
+  return data
+}
+
+/**
+ * Reset account quota usage
+ * @param id - Account ID
+ * @returns Updated account
+ */
+export async function resetAccountQuota(id: number): Promise<Account> {
+  const { data } = await apiClient.post<Account>(
+    `/admin/accounts/${id}/reset-quota`
   )
   return data
 }
@@ -220,7 +317,7 @@ export async function generateAuthUrl(
  */
 export async function exchangeCode(
   endpoint: string,
-  exchangeData: { session_id: string; code: string; proxy_id?: number }
+  exchangeData: { session_id: string; code: string; state?: string; proxy_id?: number }
 ): Promise<Record<string, unknown>> {
   const { data } = await apiClient.post<Record<string, unknown>>(endpoint, exchangeData)
   return data
@@ -302,6 +399,22 @@ export async function bulkUpdate(
  */
 export async function getTodayStats(id: number): Promise<WindowStats> {
   const { data } = await apiClient.get<WindowStats>(`/admin/accounts/${id}/today-stats`)
+  return data
+}
+
+export interface BatchTodayStatsResponse {
+  stats: Record<string, WindowStats>
+}
+
+/**
+ * 批量获取多个账号的今日统计
+ * @param accountIds - 账号 ID 列表
+ * @returns 以账号 ID（字符串）为键的统计映射
+ */
+export async function getBatchTodayStats(accountIds: number[]): Promise<BatchTodayStatsResponse> {
+  const { data } = await apiClient.post<BatchTodayStatsResponse>('/admin/accounts/today-stats/batch', {
+    account_ids: accountIds
+  })
   return data
 }
 
@@ -391,7 +504,11 @@ export async function exportData(options?: {
     platform?: string
     type?: string
     status?: string
+    group?: string
+    privacy_mode?: string
     search?: string
+    sort_by?: string
+    sort_order?: 'asc' | 'desc'
   }
   includeProxies?: boolean
 }): Promise<AdminDataPayload> {
@@ -399,11 +516,15 @@ export async function exportData(options?: {
   if (options?.ids && options.ids.length > 0) {
     params.ids = options.ids.join(',')
   } else if (options?.filters) {
-    const { platform, type, status, search } = options.filters
+    const { platform, type, status, group, privacy_mode, search, sort_by, sort_order } = options.filters
     if (platform) params.platform = platform
     if (type) params.type = type
     if (status) params.status = status
+    if (group) params.group = group
+    if (privacy_mode) params.privacy_mode = privacy_mode
     if (search) params.search = search
+    if (sort_by) params.sort_by = sort_by
+    if (sort_order) params.sort_order = sort_order
   }
   if (options?.includeProxies === false) {
     params.include_proxies = 'false'
@@ -442,23 +563,77 @@ export async function getAntigravityDefaultModelMapping(): Promise<Record<string
  */
 export async function refreshOpenAIToken(
   refreshToken: string,
-  proxyId?: number | null
+  proxyId?: number | null,
+  endpoint: string = '/admin/openai/refresh-token',
+  clientId?: string
 ): Promise<Record<string, unknown>> {
-  const payload: { refresh_token: string; proxy_id?: number } = {
+  const payload: { refresh_token: string; proxy_id?: number; client_id?: string } = {
     refresh_token: refreshToken
   }
   if (proxyId) {
     payload.proxy_id = proxyId
   }
-  const { data } = await apiClient.post<Record<string, unknown>>('/admin/openai/refresh-token', payload)
+  if (clientId) {
+    payload.client_id = clientId
+  }
+  const { data } = await apiClient.post<Record<string, unknown>>(endpoint, payload)
+  return data
+}
+
+/**
+ * Batch operation result type
+ */
+export interface BatchOperationResult {
+  total: number
+  success: number
+  failed: number
+  errors?: Array<{ account_id: number; error: string }>
+  warnings?: Array<{ account_id: number; warning: string }>
+}
+
+/**
+ * Batch clear account errors
+ * @param accountIds - Array of account IDs
+ * @returns Batch operation result
+ */
+export async function batchClearError(accountIds: number[]): Promise<BatchOperationResult> {
+  const { data } = await apiClient.post<BatchOperationResult>('/admin/accounts/batch-clear-error', {
+    account_ids: accountIds
+  })
+  return data
+}
+
+/**
+ * Batch refresh account credentials
+ * @param accountIds - Array of account IDs
+ * @returns Batch operation result
+ */
+export async function batchRefresh(accountIds: number[]): Promise<BatchOperationResult> {
+  const { data } = await apiClient.post<BatchOperationResult>('/admin/accounts/batch-refresh', {
+    account_ids: accountIds,
+  }, {
+    timeout: 120000  // 120s timeout for large batch refreshes
+  })
+  return data
+}
+
+/**
+ * Set privacy for an Antigravity OAuth account
+ * @param id - Account ID
+ * @returns Updated account
+ */
+export async function setPrivacy(id: number): Promise<Account> {
+  const { data } = await apiClient.post<Account>(`/admin/accounts/${id}/set-privacy`)
   return data
 }
 
 export const accountsAPI = {
   list,
+  listWithEtag,
   getById,
   create,
   update,
+  checkMixedChannelRisk,
   delete: deleteAccount,
   toggleStatus,
   testAccount,
@@ -467,7 +642,10 @@ export const accountsAPI = {
   clearError,
   getUsage,
   getTodayStats,
+  getBatchTodayStats,
   clearRateLimit,
+  recoverState,
+  resetAccountQuota,
   getTempUnschedulableStatus,
   resetTempUnschedulable,
   setSchedulable,
@@ -482,7 +660,10 @@ export const accountsAPI = {
   syncFromCrs,
   exportData,
   importData,
-  getAntigravityDefaultModelMapping
+  getAntigravityDefaultModelMapping,
+  batchClearError,
+  batchRefresh,
+  setPrivacy
 }
 
 export default accountsAPI

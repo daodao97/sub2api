@@ -7,6 +7,7 @@ import { apiClient } from '../client'
 import type {
   Proxy,
   ProxyAccountSummary,
+  ProxyQualityCheckResult,
   CreateProxyRequest,
   UpdateProxyRequest,
   PaginatedResponse,
@@ -28,6 +29,8 @@ export async function list(
     protocol?: string
     status?: 'active' | 'inactive'
     search?: string
+    sort_by?: string
+    sort_order?: 'asc' | 'desc'
   },
   options?: {
     signal?: AbortSignal
@@ -144,6 +147,16 @@ export async function testProxy(id: number): Promise<{
 }
 
 /**
+ * Check proxy quality across common AI targets
+ * @param id - Proxy ID
+ * @returns Quality check result
+ */
+export async function checkProxyQuality(id: number): Promise<ProxyQualityCheckResult> {
+  const { data } = await apiClient.post<ProxyQualityCheckResult>(`/admin/proxies/${id}/quality-check`)
+  return data
+}
+
+/**
  * Get proxy usage statistics
  * @param id - Proxy ID
  * @returns Proxy usage statistics
@@ -216,16 +229,20 @@ export async function exportData(options?: {
     protocol?: string
     status?: 'active' | 'inactive'
     search?: string
+    sort_by?: string
+    sort_order?: 'asc' | 'desc'
   }
 }): Promise<AdminDataPayload> {
   const params: Record<string, string> = {}
   if (options?.ids && options.ids.length > 0) {
     params.ids = options.ids.join(',')
   } else if (options?.filters) {
-    const { protocol, status, search } = options.filters
+    const { protocol, status, search, sort_by, sort_order } = options.filters
     if (protocol) params.protocol = protocol
     if (status) params.status = status
     if (search) params.search = search
+    if (sort_by) params.sort_by = sort_by
+    if (sort_order) params.sort_order = sort_order
   }
   const { data } = await apiClient.get<AdminDataPayload>('/admin/proxies/data', { params })
   return data
@@ -248,6 +265,7 @@ export const proxiesAPI = {
   delete: deleteProxy,
   toggleStatus,
   testProxy,
+  checkProxyQuality,
   getStats,
   getProxyAccounts,
   batchCreate,

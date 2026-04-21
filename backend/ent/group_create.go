@@ -18,6 +18,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/usagelog"
 	"github.com/Wei-Shaw/sub2api/ent/user"
 	"github.com/Wei-Shaw/sub2api/ent/usersubscription"
+	"github.com/Wei-Shaw/sub2api/internal/domain"
 )
 
 // GroupCreate is the builder for creating a Group entity.
@@ -354,6 +355,76 @@ func (_c *GroupCreate) SetNillableSortOrder(v *int) *GroupCreate {
 	return _c
 }
 
+// SetAllowMessagesDispatch sets the "allow_messages_dispatch" field.
+func (_c *GroupCreate) SetAllowMessagesDispatch(v bool) *GroupCreate {
+	_c.mutation.SetAllowMessagesDispatch(v)
+	return _c
+}
+
+// SetNillableAllowMessagesDispatch sets the "allow_messages_dispatch" field if the given value is not nil.
+func (_c *GroupCreate) SetNillableAllowMessagesDispatch(v *bool) *GroupCreate {
+	if v != nil {
+		_c.SetAllowMessagesDispatch(*v)
+	}
+	return _c
+}
+
+// SetRequireOauthOnly sets the "require_oauth_only" field.
+func (_c *GroupCreate) SetRequireOauthOnly(v bool) *GroupCreate {
+	_c.mutation.SetRequireOauthOnly(v)
+	return _c
+}
+
+// SetNillableRequireOauthOnly sets the "require_oauth_only" field if the given value is not nil.
+func (_c *GroupCreate) SetNillableRequireOauthOnly(v *bool) *GroupCreate {
+	if v != nil {
+		_c.SetRequireOauthOnly(*v)
+	}
+	return _c
+}
+
+// SetRequirePrivacySet sets the "require_privacy_set" field.
+func (_c *GroupCreate) SetRequirePrivacySet(v bool) *GroupCreate {
+	_c.mutation.SetRequirePrivacySet(v)
+	return _c
+}
+
+// SetNillableRequirePrivacySet sets the "require_privacy_set" field if the given value is not nil.
+func (_c *GroupCreate) SetNillableRequirePrivacySet(v *bool) *GroupCreate {
+	if v != nil {
+		_c.SetRequirePrivacySet(*v)
+	}
+	return _c
+}
+
+// SetDefaultMappedModel sets the "default_mapped_model" field.
+func (_c *GroupCreate) SetDefaultMappedModel(v string) *GroupCreate {
+	_c.mutation.SetDefaultMappedModel(v)
+	return _c
+}
+
+// SetNillableDefaultMappedModel sets the "default_mapped_model" field if the given value is not nil.
+func (_c *GroupCreate) SetNillableDefaultMappedModel(v *string) *GroupCreate {
+	if v != nil {
+		_c.SetDefaultMappedModel(*v)
+	}
+	return _c
+}
+
+// SetMessagesDispatchModelConfig sets the "messages_dispatch_model_config" field.
+func (_c *GroupCreate) SetMessagesDispatchModelConfig(v domain.OpenAIMessagesDispatchModelConfig) *GroupCreate {
+	_c.mutation.SetMessagesDispatchModelConfig(v)
+	return _c
+}
+
+// SetNillableMessagesDispatchModelConfig sets the "messages_dispatch_model_config" field if the given value is not nil.
+func (_c *GroupCreate) SetNillableMessagesDispatchModelConfig(v *domain.OpenAIMessagesDispatchModelConfig) *GroupCreate {
+	if v != nil {
+		_c.SetMessagesDispatchModelConfig(*v)
+	}
+	return _c
+}
+
 // AddAPIKeyIDs adds the "api_keys" edge to the APIKey entity by IDs.
 func (_c *GroupCreate) AddAPIKeyIDs(ids ...int64) *GroupCreate {
 	_c.mutation.AddAPIKeyIDs(ids...)
@@ -539,6 +610,26 @@ func (_c *GroupCreate) defaults() error {
 		v := group.DefaultSortOrder
 		_c.mutation.SetSortOrder(v)
 	}
+	if _, ok := _c.mutation.AllowMessagesDispatch(); !ok {
+		v := group.DefaultAllowMessagesDispatch
+		_c.mutation.SetAllowMessagesDispatch(v)
+	}
+	if _, ok := _c.mutation.RequireOauthOnly(); !ok {
+		v := group.DefaultRequireOauthOnly
+		_c.mutation.SetRequireOauthOnly(v)
+	}
+	if _, ok := _c.mutation.RequirePrivacySet(); !ok {
+		v := group.DefaultRequirePrivacySet
+		_c.mutation.SetRequirePrivacySet(v)
+	}
+	if _, ok := _c.mutation.DefaultMappedModel(); !ok {
+		v := group.DefaultDefaultMappedModel
+		_c.mutation.SetDefaultMappedModel(v)
+	}
+	if _, ok := _c.mutation.MessagesDispatchModelConfig(); !ok {
+		v := group.DefaultMessagesDispatchModelConfig
+		_c.mutation.SetMessagesDispatchModelConfig(v)
+	}
 	return nil
 }
 
@@ -605,6 +696,26 @@ func (_c *GroupCreate) check() error {
 	}
 	if _, ok := _c.mutation.SortOrder(); !ok {
 		return &ValidationError{Name: "sort_order", err: errors.New(`ent: missing required field "Group.sort_order"`)}
+	}
+	if _, ok := _c.mutation.AllowMessagesDispatch(); !ok {
+		return &ValidationError{Name: "allow_messages_dispatch", err: errors.New(`ent: missing required field "Group.allow_messages_dispatch"`)}
+	}
+	if _, ok := _c.mutation.RequireOauthOnly(); !ok {
+		return &ValidationError{Name: "require_oauth_only", err: errors.New(`ent: missing required field "Group.require_oauth_only"`)}
+	}
+	if _, ok := _c.mutation.RequirePrivacySet(); !ok {
+		return &ValidationError{Name: "require_privacy_set", err: errors.New(`ent: missing required field "Group.require_privacy_set"`)}
+	}
+	if _, ok := _c.mutation.DefaultMappedModel(); !ok {
+		return &ValidationError{Name: "default_mapped_model", err: errors.New(`ent: missing required field "Group.default_mapped_model"`)}
+	}
+	if v, ok := _c.mutation.DefaultMappedModel(); ok {
+		if err := group.DefaultMappedModelValidator(v); err != nil {
+			return &ValidationError{Name: "default_mapped_model", err: fmt.Errorf(`ent: validator failed for field "Group.default_mapped_model": %w`, err)}
+		}
+	}
+	if _, ok := _c.mutation.MessagesDispatchModelConfig(); !ok {
+		return &ValidationError{Name: "messages_dispatch_model_config", err: errors.New(`ent: missing required field "Group.messages_dispatch_model_config"`)}
 	}
 	return nil
 }
@@ -732,6 +843,26 @@ func (_c *GroupCreate) createSpec() (*Group, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.SortOrder(); ok {
 		_spec.SetField(group.FieldSortOrder, field.TypeInt, value)
 		_node.SortOrder = value
+	}
+	if value, ok := _c.mutation.AllowMessagesDispatch(); ok {
+		_spec.SetField(group.FieldAllowMessagesDispatch, field.TypeBool, value)
+		_node.AllowMessagesDispatch = value
+	}
+	if value, ok := _c.mutation.RequireOauthOnly(); ok {
+		_spec.SetField(group.FieldRequireOauthOnly, field.TypeBool, value)
+		_node.RequireOauthOnly = value
+	}
+	if value, ok := _c.mutation.RequirePrivacySet(); ok {
+		_spec.SetField(group.FieldRequirePrivacySet, field.TypeBool, value)
+		_node.RequirePrivacySet = value
+	}
+	if value, ok := _c.mutation.DefaultMappedModel(); ok {
+		_spec.SetField(group.FieldDefaultMappedModel, field.TypeString, value)
+		_node.DefaultMappedModel = value
+	}
+	if value, ok := _c.mutation.MessagesDispatchModelConfig(); ok {
+		_spec.SetField(group.FieldMessagesDispatchModelConfig, field.TypeJSON, value)
+		_node.MessagesDispatchModelConfig = value
 	}
 	if nodes := _c.mutation.APIKeysIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -1309,6 +1440,66 @@ func (u *GroupUpsert) AddSortOrder(v int) *GroupUpsert {
 	return u
 }
 
+// SetAllowMessagesDispatch sets the "allow_messages_dispatch" field.
+func (u *GroupUpsert) SetAllowMessagesDispatch(v bool) *GroupUpsert {
+	u.Set(group.FieldAllowMessagesDispatch, v)
+	return u
+}
+
+// UpdateAllowMessagesDispatch sets the "allow_messages_dispatch" field to the value that was provided on create.
+func (u *GroupUpsert) UpdateAllowMessagesDispatch() *GroupUpsert {
+	u.SetExcluded(group.FieldAllowMessagesDispatch)
+	return u
+}
+
+// SetRequireOauthOnly sets the "require_oauth_only" field.
+func (u *GroupUpsert) SetRequireOauthOnly(v bool) *GroupUpsert {
+	u.Set(group.FieldRequireOauthOnly, v)
+	return u
+}
+
+// UpdateRequireOauthOnly sets the "require_oauth_only" field to the value that was provided on create.
+func (u *GroupUpsert) UpdateRequireOauthOnly() *GroupUpsert {
+	u.SetExcluded(group.FieldRequireOauthOnly)
+	return u
+}
+
+// SetRequirePrivacySet sets the "require_privacy_set" field.
+func (u *GroupUpsert) SetRequirePrivacySet(v bool) *GroupUpsert {
+	u.Set(group.FieldRequirePrivacySet, v)
+	return u
+}
+
+// UpdateRequirePrivacySet sets the "require_privacy_set" field to the value that was provided on create.
+func (u *GroupUpsert) UpdateRequirePrivacySet() *GroupUpsert {
+	u.SetExcluded(group.FieldRequirePrivacySet)
+	return u
+}
+
+// SetDefaultMappedModel sets the "default_mapped_model" field.
+func (u *GroupUpsert) SetDefaultMappedModel(v string) *GroupUpsert {
+	u.Set(group.FieldDefaultMappedModel, v)
+	return u
+}
+
+// UpdateDefaultMappedModel sets the "default_mapped_model" field to the value that was provided on create.
+func (u *GroupUpsert) UpdateDefaultMappedModel() *GroupUpsert {
+	u.SetExcluded(group.FieldDefaultMappedModel)
+	return u
+}
+
+// SetMessagesDispatchModelConfig sets the "messages_dispatch_model_config" field.
+func (u *GroupUpsert) SetMessagesDispatchModelConfig(v domain.OpenAIMessagesDispatchModelConfig) *GroupUpsert {
+	u.Set(group.FieldMessagesDispatchModelConfig, v)
+	return u
+}
+
+// UpdateMessagesDispatchModelConfig sets the "messages_dispatch_model_config" field to the value that was provided on create.
+func (u *GroupUpsert) UpdateMessagesDispatchModelConfig() *GroupUpsert {
+	u.SetExcluded(group.FieldMessagesDispatchModelConfig)
+	return u
+}
+
 // UpdateNewValues updates the mutable fields using the new values that were set on create.
 // Using this option is equivalent to using:
 //
@@ -1841,6 +2032,76 @@ func (u *GroupUpsertOne) AddSortOrder(v int) *GroupUpsertOne {
 func (u *GroupUpsertOne) UpdateSortOrder() *GroupUpsertOne {
 	return u.Update(func(s *GroupUpsert) {
 		s.UpdateSortOrder()
+	})
+}
+
+// SetAllowMessagesDispatch sets the "allow_messages_dispatch" field.
+func (u *GroupUpsertOne) SetAllowMessagesDispatch(v bool) *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetAllowMessagesDispatch(v)
+	})
+}
+
+// UpdateAllowMessagesDispatch sets the "allow_messages_dispatch" field to the value that was provided on create.
+func (u *GroupUpsertOne) UpdateAllowMessagesDispatch() *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateAllowMessagesDispatch()
+	})
+}
+
+// SetRequireOauthOnly sets the "require_oauth_only" field.
+func (u *GroupUpsertOne) SetRequireOauthOnly(v bool) *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetRequireOauthOnly(v)
+	})
+}
+
+// UpdateRequireOauthOnly sets the "require_oauth_only" field to the value that was provided on create.
+func (u *GroupUpsertOne) UpdateRequireOauthOnly() *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateRequireOauthOnly()
+	})
+}
+
+// SetRequirePrivacySet sets the "require_privacy_set" field.
+func (u *GroupUpsertOne) SetRequirePrivacySet(v bool) *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetRequirePrivacySet(v)
+	})
+}
+
+// UpdateRequirePrivacySet sets the "require_privacy_set" field to the value that was provided on create.
+func (u *GroupUpsertOne) UpdateRequirePrivacySet() *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateRequirePrivacySet()
+	})
+}
+
+// SetDefaultMappedModel sets the "default_mapped_model" field.
+func (u *GroupUpsertOne) SetDefaultMappedModel(v string) *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetDefaultMappedModel(v)
+	})
+}
+
+// UpdateDefaultMappedModel sets the "default_mapped_model" field to the value that was provided on create.
+func (u *GroupUpsertOne) UpdateDefaultMappedModel() *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateDefaultMappedModel()
+	})
+}
+
+// SetMessagesDispatchModelConfig sets the "messages_dispatch_model_config" field.
+func (u *GroupUpsertOne) SetMessagesDispatchModelConfig(v domain.OpenAIMessagesDispatchModelConfig) *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetMessagesDispatchModelConfig(v)
+	})
+}
+
+// UpdateMessagesDispatchModelConfig sets the "messages_dispatch_model_config" field to the value that was provided on create.
+func (u *GroupUpsertOne) UpdateMessagesDispatchModelConfig() *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateMessagesDispatchModelConfig()
 	})
 }
 
@@ -2542,6 +2803,76 @@ func (u *GroupUpsertBulk) AddSortOrder(v int) *GroupUpsertBulk {
 func (u *GroupUpsertBulk) UpdateSortOrder() *GroupUpsertBulk {
 	return u.Update(func(s *GroupUpsert) {
 		s.UpdateSortOrder()
+	})
+}
+
+// SetAllowMessagesDispatch sets the "allow_messages_dispatch" field.
+func (u *GroupUpsertBulk) SetAllowMessagesDispatch(v bool) *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetAllowMessagesDispatch(v)
+	})
+}
+
+// UpdateAllowMessagesDispatch sets the "allow_messages_dispatch" field to the value that was provided on create.
+func (u *GroupUpsertBulk) UpdateAllowMessagesDispatch() *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateAllowMessagesDispatch()
+	})
+}
+
+// SetRequireOauthOnly sets the "require_oauth_only" field.
+func (u *GroupUpsertBulk) SetRequireOauthOnly(v bool) *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetRequireOauthOnly(v)
+	})
+}
+
+// UpdateRequireOauthOnly sets the "require_oauth_only" field to the value that was provided on create.
+func (u *GroupUpsertBulk) UpdateRequireOauthOnly() *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateRequireOauthOnly()
+	})
+}
+
+// SetRequirePrivacySet sets the "require_privacy_set" field.
+func (u *GroupUpsertBulk) SetRequirePrivacySet(v bool) *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetRequirePrivacySet(v)
+	})
+}
+
+// UpdateRequirePrivacySet sets the "require_privacy_set" field to the value that was provided on create.
+func (u *GroupUpsertBulk) UpdateRequirePrivacySet() *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateRequirePrivacySet()
+	})
+}
+
+// SetDefaultMappedModel sets the "default_mapped_model" field.
+func (u *GroupUpsertBulk) SetDefaultMappedModel(v string) *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetDefaultMappedModel(v)
+	})
+}
+
+// UpdateDefaultMappedModel sets the "default_mapped_model" field to the value that was provided on create.
+func (u *GroupUpsertBulk) UpdateDefaultMappedModel() *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateDefaultMappedModel()
+	})
+}
+
+// SetMessagesDispatchModelConfig sets the "messages_dispatch_model_config" field.
+func (u *GroupUpsertBulk) SetMessagesDispatchModelConfig(v domain.OpenAIMessagesDispatchModelConfig) *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetMessagesDispatchModelConfig(v)
+	})
+}
+
+// UpdateMessagesDispatchModelConfig sets the "messages_dispatch_model_config" field to the value that was provided on create.
+func (u *GroupUpsertBulk) UpdateMessagesDispatchModelConfig() *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateMessagesDispatchModelConfig()
 	})
 }
 

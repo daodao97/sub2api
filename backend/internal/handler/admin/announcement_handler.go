@@ -27,21 +27,23 @@ func NewAnnouncementHandler(announcementService *service.AnnouncementService) *A
 }
 
 type CreateAnnouncementRequest struct {
-	Title     string                        `json:"title" binding:"required"`
-	Content   string                        `json:"content" binding:"required"`
-	Status    string                        `json:"status" binding:"omitempty,oneof=draft active archived"`
-	Targeting service.AnnouncementTargeting `json:"targeting"`
-	StartsAt  *int64                        `json:"starts_at"` // Unix seconds, 0/empty = immediate
-	EndsAt    *int64                        `json:"ends_at"`   // Unix seconds, 0/empty = never
+	Title      string                        `json:"title" binding:"required"`
+	Content    string                        `json:"content" binding:"required"`
+	Status     string                        `json:"status" binding:"omitempty,oneof=draft active archived"`
+	NotifyMode string                        `json:"notify_mode" binding:"omitempty,oneof=silent popup"`
+	Targeting  service.AnnouncementTargeting `json:"targeting"`
+	StartsAt   *int64                        `json:"starts_at"` // Unix seconds, 0/empty = immediate
+	EndsAt     *int64                        `json:"ends_at"`   // Unix seconds, 0/empty = never
 }
 
 type UpdateAnnouncementRequest struct {
-	Title     *string                        `json:"title"`
-	Content   *string                        `json:"content"`
-	Status    *string                        `json:"status" binding:"omitempty,oneof=draft active archived"`
-	Targeting *service.AnnouncementTargeting `json:"targeting"`
-	StartsAt  *int64                         `json:"starts_at"` // Unix seconds, 0 = clear
-	EndsAt    *int64                         `json:"ends_at"`   // Unix seconds, 0 = clear
+	Title      *string                        `json:"title"`
+	Content    *string                        `json:"content"`
+	Status     *string                        `json:"status" binding:"omitempty,oneof=draft active archived"`
+	NotifyMode *string                        `json:"notify_mode" binding:"omitempty,oneof=silent popup"`
+	Targeting  *service.AnnouncementTargeting `json:"targeting"`
+	StartsAt   *int64                         `json:"starts_at"` // Unix seconds, 0 = clear
+	EndsAt     *int64                         `json:"ends_at"`   // Unix seconds, 0 = clear
 }
 
 // List handles listing announcements with filters
@@ -50,13 +52,17 @@ func (h *AnnouncementHandler) List(c *gin.Context) {
 	page, pageSize := response.ParsePagination(c)
 	status := strings.TrimSpace(c.Query("status"))
 	search := strings.TrimSpace(c.Query("search"))
+	sortBy := c.DefaultQuery("sort_by", "created_at")
+	sortOrder := c.DefaultQuery("sort_order", "desc")
 	if len(search) > 200 {
 		search = search[:200]
 	}
 
 	params := pagination.PaginationParams{
-		Page:     page,
-		PageSize: pageSize,
+		Page:      page,
+		PageSize:  pageSize,
+		SortBy:    sortBy,
+		SortOrder: sortOrder,
 	}
 
 	items, paginationResult, err := h.announcementService.List(
@@ -110,11 +116,12 @@ func (h *AnnouncementHandler) Create(c *gin.Context) {
 	}
 
 	input := &service.CreateAnnouncementInput{
-		Title:     req.Title,
-		Content:   req.Content,
-		Status:    req.Status,
-		Targeting: req.Targeting,
-		ActorID:   &subject.UserID,
+		Title:      req.Title,
+		Content:    req.Content,
+		Status:     req.Status,
+		NotifyMode: req.NotifyMode,
+		Targeting:  req.Targeting,
+		ActorID:    &subject.UserID,
 	}
 
 	if req.StartsAt != nil && *req.StartsAt > 0 {
@@ -157,11 +164,12 @@ func (h *AnnouncementHandler) Update(c *gin.Context) {
 	}
 
 	input := &service.UpdateAnnouncementInput{
-		Title:     req.Title,
-		Content:   req.Content,
-		Status:    req.Status,
-		Targeting: req.Targeting,
-		ActorID:   &subject.UserID,
+		Title:      req.Title,
+		Content:    req.Content,
+		Status:     req.Status,
+		NotifyMode: req.NotifyMode,
+		Targeting:  req.Targeting,
+		ActorID:    &subject.UserID,
 	}
 
 	if req.StartsAt != nil {
@@ -223,8 +231,10 @@ func (h *AnnouncementHandler) ListReadStatus(c *gin.Context) {
 
 	page, pageSize := response.ParsePagination(c)
 	params := pagination.PaginationParams{
-		Page:     page,
-		PageSize: pageSize,
+		Page:      page,
+		PageSize:  pageSize,
+		SortBy:    c.DefaultQuery("sort_by", "email"),
+		SortOrder: c.DefaultQuery("sort_order", "asc"),
 	}
 	search := strings.TrimSpace(c.Query("search"))
 	if len(search) > 200 {

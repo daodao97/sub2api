@@ -24,7 +24,7 @@ func (s *OpsService) listAllAccountsForOps(ctx context.Context, platformFilter s
 		accounts, pageInfo, err := s.accountRepo.ListWithFilters(ctx, pagination.PaginationParams{
 			Page:     page,
 			PageSize: opsAccountsPageSize,
-		}, platformFilter, "", "", "", 0)
+		}, platformFilter, "", "", "", 0, "")
 		if err != nil {
 			return nil, err
 		}
@@ -64,8 +64,9 @@ func (s *OpsService) getAccountsLoadMapBestEffort(ctx context.Context, accounts 
 		if acc.ID <= 0 {
 			continue
 		}
-		if prev, ok := unique[acc.ID]; !ok || acc.Concurrency > prev {
-			unique[acc.ID] = acc.Concurrency
+		lf := acc.EffectiveLoadFactor()
+		if prev, ok := unique[acc.ID]; !ok || lf > prev {
+			unique[acc.ID] = lf
 		}
 	}
 
