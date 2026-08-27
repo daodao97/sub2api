@@ -317,6 +317,19 @@ export async function getUsage(id: number, source?: 'passive' | 'active', force?
   return data
 }
 
+export interface BatchAccountUsageResponse {
+  usage: Record<string, AccountUsageInfo>
+  errors: Record<string, string>
+}
+
+export async function getBatchUsage(accountIds: number[], force?: boolean): Promise<BatchAccountUsageResponse> {
+  const { data } = await apiClient.post<BatchAccountUsageResponse>('/admin/accounts/usage/batch', {
+    account_ids: accountIds,
+    force: force === true
+  })
+  return data
+}
+
 /**
  * Clear account rate limit status
  * @param id - Account ID
@@ -457,6 +470,7 @@ export async function bulkUpdate(
   failed: number
   success_ids?: number[]
   failed_ids?: number[]
+  long_context_inherited_count?: number
   results: Array<{ account_id: number; success: boolean; error?: string }>
   }> {
   const payload = Array.isArray(accountIdsOrPayload)
@@ -470,6 +484,7 @@ export async function bulkUpdate(
     failed: number
     success_ids?: number[]
     failed_ids?: number[]
+    long_context_inherited_count?: number
     results: Array<{ account_id: number; success: boolean; error?: string }>
   }>('/admin/accounts/bulk-update', payload)
   return data
@@ -526,6 +541,25 @@ export async function getAvailableModels(id: number): Promise<ClaudeModel[]> {
 
 export interface SyncUpstreamModelsResult {
   models: string[]
+  metadata?: Record<string, UpstreamModelMetadata>
+  warnings?: UpstreamModelSyncWarning[]
+}
+
+export interface UpstreamModelSyncWarning {
+  code: string
+  message: string
+}
+
+export interface UpstreamModelMetadata {
+  id: string
+  display_name?: string
+  description?: string
+  reasoning?: boolean
+  default_reasoning_level?: string
+  supported_reasoning_levels?: string[]
+  input_modalities?: string[]
+  context_window?: number
+  max_output_tokens?: number
 }
 
 /**
@@ -543,6 +577,7 @@ export interface SyncUpstreamPreviewParams {
   type: string
   base_url?: string
   api_key: string
+  model_mapping?: Record<string, string>
 }
 
 /**
@@ -986,6 +1021,7 @@ export const accountsAPI = {
   getStats,
   clearError,
   getUsage,
+  getBatchUsage,
   getTodayStats,
   getBatchTodayStats,
   clearRateLimit,
